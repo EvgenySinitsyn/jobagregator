@@ -16,13 +16,16 @@ def get_signature(params, secret):
 
     # Возвращаем требуемый хэш
     sorted_params = sort_dict(params)
-    return hashlib.sha256((json.dumps(sorted_params) + secret).encode('utf-8')).hexdigest()
+    string_for_hash = json.dumps(sorted_params).replace(' ', '') + secret
+    hash_str = hashlib.sha256(string_for_hash.encode('utf-8')).hexdigest()
+    print(hash_str)
+    return hash_str
 
 # Пример использования:
 params = {
     'app_id': '723',
-    'time': int(datetime.now().timestamp()),
-    'code': '32SiX2NT6eJcc04wZKGFzg3bmlbphCwI',
+    'time': str(int(datetime.now().timestamp())),
+    'code': '5DDo4tQcbpzebNh0uYM2FAgHrpwWS76i',
 }
 secret = 'XJeCajJckqBiDBA0KdpCE7sCc72l0TBR'
 signature = get_signature(params, secret)
@@ -32,12 +35,9 @@ headers = {
     'content-type': 'application/x-www-form-urlencoded'
 }
 response = requests.post(
-    url='https://api.rabota.ru/oauth/token.json',
+    url='https://api.rabota.ru/oauth/token.html',
     params=params,
     headers=headers,
 )
-for i in response.__dict__.items():
-    print(i)
-for i in params.items():
-    print(i)
+print(response.status_code)
 
