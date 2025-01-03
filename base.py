@@ -1,7 +1,7 @@
 from playhouse.mysql_ext import JSONField
 from peewee import __exception_wrapper__ as exc_wrapper, OperationalError, IntegrityError
 from peewee import MySQLDatabase, Model, fn
-from peewee import PrimaryKeyField, DateField, CharFeild
+from peewee import PrimaryKeyField, DateField, CharField, IntegerField, DateTimeField, ForeignKeyField
 from config import CONFIG
 
 
@@ -43,4 +43,46 @@ class BaseModel(Model):
 
 class City(BaseModel):
     id = PrimaryKeyField()
-    name = CharFeild
+    name = CharField()
+
+    class Meta:
+        db_table = 'city'
+
+
+class Platform(BaseModel):
+    id = PrimaryKeyField()
+    name = CharField()
+
+    class Meta:
+        db_table = 'platform'
+
+
+class Profession(BaseModel):
+    id = PrimaryKeyField()
+    name = CharField()
+
+    class Meta:
+        db_table = 'profession'
+
+
+class Resume(BaseModel):
+    id = PrimaryKeyField()
+    platform_id = ForeignKeyField(Platform, backref='resumes')
+    platform_resume_id = CharField()
+    city_id = ForeignKeyField(City, backref='resumes')
+    profession_id = ForeignKeyField(Profession, backref='resumes')
+    sex = CharField()
+    age = IntegerField()
+    salary_from = IntegerField()
+    salary_to = IntegerField()
+    currency = CharField()
+    experience_months = IntegerField()
+    summary_info = JSONField()
+    link = CharField()
+
+    class Meta:
+        db_table = 'resume'
+
+    @classmethod
+    def get_resume_count(cls):
+        return cls.select().count()

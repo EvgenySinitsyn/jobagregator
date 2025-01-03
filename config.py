@@ -16,6 +16,14 @@ try:
         'hh_app_token': os.environ.get('HH_APP_TOKEN'),
         'hh_user_authorization_code': os.environ.get('HH_USER_AUTHORIZATION_CODE'),
         'hh_api_url': os.environ.get('HH_API_URL'),
+
+        'mysql_base': os.environ.get('MYSQL_DATABASE'),
+        'mysql_user': os.environ.get('MYSQL_ROOT_USER'),
+        'mysql_password': os.environ.get('MYSQL_PASSWORD'),
+        'mysql_charset': os.environ.get('CHARSRET'),
+        'log_filename': os.environ.get('LOG_FILENAME'),
+        'mysql_name_host': os.environ.get('MYSQL_NAME_HOST'),
+        'mysql_port': int(os.environ.get('MYSQL_PORT')),
     }
 except KeyError as error:
     print('KeyError: {}'.format(error))
