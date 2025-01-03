@@ -10,17 +10,18 @@ CREATE TABLE `platform` (
 
 CREATE TABLE `city` (
     `id` INT NOT NULL AUTO_INCREMENT,
-    `name` VARCHAR(30),
+    `name` VARCHAR(255),
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+CREATE UNIQUE INDEX city_idx1 on city(`name`);
 
 
 CREATE TABLE `profession` (
     `id` INT NOT NULL AUTO_INCREMENT,
-    `name` VARCHAR(30),
+    `name` VARCHAR(255),
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-CREATE INDEX profession_idx1 on profession(`name`);
+CREATE UNIQUE INDEX profession_idx1 on profession(`name`);
 
 
 CREATE TABLE `resume` (
@@ -37,6 +38,7 @@ CREATE TABLE `resume` (
     `experience_months` INT,
     `summary_info` JSON,
     `link` VARCHAR(255),
+    `tm` DATETIME DEFAULT NOW(),
     PRIMARY KEY (`id`),
     FOREIGN KEY (platform_id) REFERENCES platform(id),
     FOREIGN KEY (city_id) REFERENCES city(id),
@@ -45,3 +47,4 @@ CREATE TABLE `resume` (
 CREATE INDEX resume_idx1 on resume(`sex`);
 CREATE INDEX resume_idx2 on resume(`age`);
 CREATE INDEX resume_idx3 on resume(`currency`);
+CREATE UNIQUE INDEX resume_idx4 on resume(`platform_id`, `platform_resume_id`);

@@ -64,6 +64,15 @@ class Profession(BaseModel):
     class Meta:
         db_table = 'profession'
 
+    @classmethod
+    def add_many(cls, professions_list):
+        cls.insert_many(
+            rows=professions_list,
+            fields=(
+                cls.name,
+            ),
+        ).on_conflict_ignore().execute()
+
 
 class Resume(BaseModel):
     id = PrimaryKeyField()
@@ -79,6 +88,7 @@ class Resume(BaseModel):
     experience_months = IntegerField()
     summary_info = JSONField()
     link = CharField()
+    tm = DateTimeField()
 
     class Meta:
         db_table = 'resume'
@@ -86,3 +96,8 @@ class Resume(BaseModel):
     @classmethod
     def get_resume_count(cls):
         return cls.select().count()
+
+    @classmethod
+    def add(cls, data_list):
+        with db.atomic():
+            cls.insert_many(data_list).on_conflict_replace().execute()

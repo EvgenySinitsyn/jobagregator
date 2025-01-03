@@ -1,8 +1,14 @@
 certifi==2024.12.14
+cffi==1.17.1
 charset-normalizer==3.4.1
+cryptography==44.0.0
 idna==3.10
 peewee==3.17.8
 playhouse==0.1.0
+pycparser==2.22
+PyMySQL==1.1.1
+python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 requests==2.32.3
+six==1.17.0
 urllib3==2.3.0
