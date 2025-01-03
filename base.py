@@ -1,7 +1,7 @@
 from playhouse.mysql_ext import JSONField
 from peewee import __exception_wrapper__ as exc_wrapper, OperationalError, IntegrityError
 from peewee import MySQLDatabase, Model, fn
-from peewee import PrimaryKeyField, DateField
+from peewee import PrimaryKeyField, DateField, CharFeild
 from config import CONFIG
 
 
@@ -43,4 +43,4 @@ class BaseModel(Model):
 
 class City(BaseModel):
     id = PrimaryKeyField()
-
+    name = CharFeild
