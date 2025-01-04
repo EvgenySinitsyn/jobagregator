@@ -41,13 +41,15 @@ def experience_months(exp_list):
 def get_item_db_field_dict(item, city_db_object_dict, profession_db_object_dict, platform):
     city_name = item['area']['name']
     db_field_item_dict = {
-        'platform_id': platform,
+        'platform': platform,
         'platform_resume_id': item['id'],
-        'profession_id': profession_db_object_dict.setdefault(
+        'platform_resume_tm_create': datetime.strptime(item['created_at'], "%Y-%m-%dT%H:%M:%S%z"),
+        'platform_resume_tm_update': datetime.strptime(item['updated_at'], "%Y-%m-%dT%H:%M:%S%z"),
+        'profession': profession_db_object_dict.setdefault(
             item['title'],
             Profession.get_or_create(name=item['title'])[0]
         ),
-        'city_id': city_db_object_dict.setdefault(
+        'city': city_db_object_dict.setdefault(
             city_name,
             City.get_or_create(name=city_name)[0]
         ),
@@ -55,7 +57,7 @@ def get_item_db_field_dict(item, city_db_object_dict, profession_db_object_dict,
         'age': item['age'],
         'salary_from': item.get('salary') and item['salary'].get('amount'),
         'currency': currency_dict.get(item.get('salary') and item['salary'].get('currency')),
-        'experience_months': experience_months(item['experience']),
+        'experience_months': item['total_experience']['months'],
         'summary_info': item,
         'link': item['alternate_url'],
     }
@@ -75,6 +77,7 @@ def get_resumes(page):
     page += 1
     data = []
     for item in response['items']:
+        print(item['created_at'])
         data.append(get_item_db_field_dict(item, city_db_object_dict, profession_db_object_dict, platform))
     Resume.add(data)
 
@@ -86,4 +89,4 @@ keys = ['last_name', 'first_name', 'middle_name', 'title', 'created_at', 'update
 
 
 if __name__ == '__main__':
-    get_resumes(0)
+    get_resumes(3)

@@ -20,7 +20,7 @@ try:
         'mysql_base': os.environ.get('MYSQL_DATABASE'),
         'mysql_user': os.environ.get('MYSQL_ROOT_USER'),
         'mysql_password': os.environ.get('MYSQL_PASSWORD'),
-        'mysql_charset': os.environ.get('CHARSRET'),
+        'mysql_charset': os.environ.get('MYSQL_CHARSET'),
         'log_filename': os.environ.get('LOG_FILENAME'),
         'mysql_name_host': os.environ.get('MYSQL_NAME_HOST'),
         'mysql_port': int(os.environ.get('MYSQL_PORT')),

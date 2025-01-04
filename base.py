@@ -28,9 +28,14 @@ class MyRetryDB(RetryOperationalError, MySQLDatabase):
     pass
 
 
-db = MyRetryDB(CONFIG['mysql_base'], user=CONFIG['mysql_user'],
-               host=CONFIG['mysql_name_host'], password=CONFIG['mysql_password'],
-               charset=CONFIG['mysql_charset'], port=CONFIG['mysql_port'])
+db = MyRetryDB(
+    database=CONFIG['mysql_base'],
+    user=CONFIG['mysql_user'],
+    host=CONFIG['mysql_name_host'],
+    password=CONFIG['mysql_password'],
+    charset=CONFIG['mysql_charset'],
+    port=CONFIG['mysql_port'],
+)
 
 
 class BaseModel(Model):
@@ -76,10 +81,12 @@ class Profession(BaseModel):
 
 class Resume(BaseModel):
     id = PrimaryKeyField()
-    platform_id = ForeignKeyField(Platform, backref='resumes')
+    platform = ForeignKeyField(Platform, backref='resumes')
     platform_resume_id = CharField()
-    city_id = ForeignKeyField(City, backref='resumes')
-    profession_id = ForeignKeyField(Profession, backref='resumes')
+    platform_resume_tm_create = DateTimeField()
+    platform_resume_tm_update = DateTimeField()
+    city = ForeignKeyField(City, backref='resumes')
+    profession = ForeignKeyField(Profession, backref='resumes')
     sex = CharField()
     age = IntegerField()
     salary_from = IntegerField()
