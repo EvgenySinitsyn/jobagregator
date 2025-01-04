@@ -77,11 +77,11 @@ def get_resumes(page):
     page += 1
     data = []
     for item in response['items']:
-        print(item['created_at'])
         data.append(get_item_db_field_dict(item, city_db_object_dict, profession_db_object_dict, platform))
     Resume.add(data)
 
 
+# поля резюме
 keys = ['last_name', 'first_name', 'middle_name', 'title', 'created_at', 'updated_at', 'area', 'age', 'gender',
         'salary', 'photo', 'total_experience', 'certificate', 'owner', 'can_view_full_info', 'negotiations_history',
         'hidden_fields', 'actions', 'url', 'alternate_url', 'id', 'download', 'platform', 'education', 'experience',
