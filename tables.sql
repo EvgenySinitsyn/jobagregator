@@ -42,9 +42,9 @@ CREATE TABLE `resume` (
     `link` VARCHAR(255),
     `tm` DATETIME DEFAULT NOW(),
     PRIMARY KEY (`id`),
-    FOREIGN KEY (platform_id) REFERENCES platform(id),
-    FOREIGN KEY (city_id) REFERENCES city(id),
-    FOREIGN KEY (profession_id) REFERENCES profession(id)
+    FOREIGN KEY (platform_id) REFERENCES platform(id) ON DELETE CASCADE,
+    FOREIGN KEY (city_id) REFERENCES city(id) ON DELETE CASCADE,
+    FOREIGN KEY (profession_id) REFERENCES profession(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_0900_ai_ci;;
 CREATE INDEX resume_idx1 on resume(`sex`);
 CREATE INDEX resume_idx2 on resume(`age`);

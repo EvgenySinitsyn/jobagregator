@@ -4,81 +4,126 @@ from base import Resume, Profession, City, Platform
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
-api_url = CONFIG.get('hh_api_url')
-url = api_url + '/resumes'
 
-headers = {
-    'Authorization': f'Bearer {CONFIG.get("hh_user_authorization_code")}'
-}
+class HHParser:
+    api_url = CONFIG.get('hh_api_url')
 
-params = {
-    'text': ('разработчик', 'sql', 'senior'),
-    'period': 7,
-}
-
-currency_dict = {
-    'RUR': 'RUB',
-    'USD': 'USD',
-    'EUR': 'EUR',
-}
-
-
-def experience_months(exp_list):
-    if not exp_list:
-        return 0
-    dt_start = datetime.strptime(exp_list[-1]['start'], "%Y-%m-%d").date()
-    dt_end = exp_list[0]['end']
-    if not dt_end:
-        dt_end = datetime.now().date()
-    else:
-        dt_end = datetime.strptime(dt_end, "%Y-%m-%d").date()
-
-    difference = relativedelta(dt_end, dt_start)
-    months_difference = difference.years * 12 + difference.months
-    return months_difference
-
-
-def get_item_db_field_dict(item, city_db_object_dict, profession_db_object_dict, platform):
-    city_name = item['area']['name']
-    db_field_item_dict = {
-        'platform': platform,
-        'platform_resume_id': item['id'],
-        'platform_resume_tm_create': datetime.strptime(item['created_at'], "%Y-%m-%dT%H:%M:%S%z"),
-        'platform_resume_tm_update': datetime.strptime(item['updated_at'], "%Y-%m-%dT%H:%M:%S%z"),
-        'profession': profession_db_object_dict.setdefault(
-            item['title'],
-            Profession.get_or_create(name=item['title'])[0]
-        ),
-        'city': city_db_object_dict.setdefault(
-            city_name,
-            City.get_or_create(name=city_name)[0]
-        ),
-        'sex': item['gender']['id'],
-        'age': item['age'],
-        'salary_from': item.get('salary') and item['salary'].get('amount'),
-        'currency': currency_dict.get(item.get('salary') and item['salary'].get('currency')),
-        'experience_months': item['total_experience']['months'],
-        'summary_info': item,
-        'link': item['alternate_url'],
+    headers = {
+        'Authorization': f'Bearer {CONFIG.get("hh_user_authorization_code")}'
     }
-    return db_field_item_dict
 
+    currency_dict = {
+        'RUR': 'RUB',
+        'USD': 'USD',
+        'EUR': 'EUR',
+    }
 
-def get_resumes(page):
-    platform = Platform.get_or_create(name='HH')[0]
-    city_db_object_dict = {}
-    profession_db_object_dict = {}
-    params['page'] = page
-    response = requests.get(
-        url=url,
-        headers=headers,
-        params=params,
-    ).json()
-    page += 1
-    data = []
-    for item in response['items']:
-        data.append(get_item_db_field_dict(item, city_db_object_dict, profession_db_object_dict, platform))
-    Resume.add(data)
+    experience_dict = {
+        (0,): 'noExperience',
+        tuple(range(12, 37)): 'between1And3',
+        tuple(range(37, 73)): 'between3And6',
+        tuple(range(73, 100000)): 'moreThan6',
+    }
+
+    education_dict = {
+        'second': 'secondary',
+        'higher': 'higher',
+    }
+
+    def experience_months(self, exp_list):
+        if not exp_list:
+            return 0
+        dt_start = datetime.strptime(exp_list[-1]['start'], "%Y-%m-%d").date()
+        dt_end = exp_list[0]['end']
+        if not dt_end:
+            dt_end = datetime.now().date()
+        else:
+            dt_end = datetime.strptime(dt_end, "%Y-%m-%d").date()
+
+        difference = relativedelta(dt_end, dt_start)
+        months_difference = difference.years * 12 + difference.months
+        return months_difference
+
+    def get_item_db_field_dict(self, item, city_db_object_dict, profession_db_object_dict, platform):
+        city_name = item['area']['name']
+        db_field_item_dict = {
+            'platform': platform,
+            'platform_resume_id': item['id'],
+            'platform_resume_tm_create': datetime.strptime(item['created_at'], "%Y-%m-%dT%H:%M:%S%z"),
+            'platform_resume_tm_update': datetime.strptime(item['updated_at'], "%Y-%m-%dT%H:%M:%S%z"),
+            'profession': profession_db_object_dict.setdefault(
+                item['title'],
+                Profession.get_or_create(name=item['title'])[0]
+            ),
+            'city': city_db_object_dict.setdefault(
+                city_name,
+                City.get_or_create(name=city_name)[0]
+            ),
+            'sex': item['gender']['id'],
+            'age': item['age'],
+            'salary_from': item.get('salary') and item['salary'].get('amount'),
+            'currency': self.currency_dict.get(item.get('salary') and item['salary'].get('currency')),
+            'experience_months': item.get('total_experience') and item.get('total_experience').get('months'),
+            'summary_info': item,
+            'link': item['alternate_url'],
+        }
+        return db_field_item_dict
+
+    def get_area(self):
+        params = {
+        }
+        response = requests.get(
+            url=self.api_url + '/areas',
+            headers=self.headers,
+            params=params,
+        ).json()
+
+    def get_resumes(
+            self,
+            city=None,
+            gender=None,
+            create_tm=None,
+            experience_from=None,
+            experience_to=None,
+            text=None,
+            education=None,
+            age_from=None,
+            age_to=None,
+            page=0,
+    ):
+        platform = Platform.get_or_create(name='HH')[0]
+        city_db_object_dict = {}
+        profession_db_object_dict = {}
+        params = {
+            'gender': gender,
+            'education_level': self.education_dict.get(education),
+            'age_from': age_from,
+            'age_to': age_to,
+        }
+        if create_tm:
+            date_object = datetime.strptime(create_tm, "%Y-%m-%d")
+            params['period'] = (datetime.now() - date_object).days
+
+        if experience_from:
+            for months, value in self.experience_dict.items():
+                if experience_from in months:
+                    params['experience'] = value
+
+        if text:
+            params['text'] = text.split()
+        params['page'] = page
+        response = requests.get(
+            url=self.api_url + '/resumes',
+            headers=self.headers,
+            params=params,
+        ).json()
+        print(response)
+        page += 1
+        data = []
+        for item in response['items']:
+            data.append(self.get_item_db_field_dict(item, city_db_object_dict, profession_db_object_dict, platform))
+        Resume.add(data)
+        return data
 
 
 # поля резюме
@@ -87,6 +132,6 @@ keys = ['last_name', 'first_name', 'middle_name', 'title', 'created_at', 'update
         'hidden_fields', 'actions', 'url', 'alternate_url', 'id', 'download', 'platform', 'education', 'experience',
         'favorited', 'viewed', 'marked', 'last_negotiation']
 
-
 if __name__ == '__main__':
-    get_resumes(3)
+    hh = HHParser()
+    hh.get_resumes(3)
