@@ -108,3 +108,35 @@ class Resume(BaseModel):
     def add(cls, data_list):
         with db.atomic():
             cls.insert_many(data_list).on_conflict_replace().execute()
+
+
+class PlatformCity(BaseModel):
+    id = PrimaryKeyField()
+    platform_id = ForeignKeyField(Platform)
+    city_id = ForeignKeyField(City)
+    platform_city_id = CharField()
+
+    class Meta:
+        db_table = 'platform_city'
+
+    @classmethod
+    def add(
+            cls,
+            platform_id,
+            city_id,
+            platform_city_id,
+    ):
+        try:
+            cls.create(
+                platform_id=platform_id,
+                city_id=city_id,
+                platform_city_id=platform_city_id,
+            ).on
+        except Exception as ex:
+            pass
+
+    @classmethod
+    def get_by_name(cls, name):
+        return cls.select().join(City).where(
+            City.name == name
+        ).first()

@@ -3,6 +3,7 @@ import hashlib
 import requests
 from datetime import datetime
 
+
 def get_signature(params, secret):
     # Приводим все значения к типу строка (str)
     params = {k: str(v) for k, v in params.items()}

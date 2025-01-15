@@ -45,8 +45,20 @@ CREATE TABLE `resume` (
     FOREIGN KEY (platform_id) REFERENCES platform(id) ON DELETE CASCADE,
     FOREIGN KEY (city_id) REFERENCES city(id) ON DELETE CASCADE,
     FOREIGN KEY (profession_id) REFERENCES profession(id) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_0900_ai_ci;;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 CREATE INDEX resume_idx1 on resume(`sex`);
 CREATE INDEX resume_idx2 on resume(`age`);
 CREATE INDEX resume_idx3 on resume(`currency`);
 CREATE UNIQUE INDEX resume_idx4 on resume(`platform_id`, `platform_resume_id`);
+
+
+CREATE TABLE `platform_city` (
+    `id` INT NOT NULL AUTO_INCREMENT,
+    `platform_id` INT,
+    `city_id` INT,
+    `platform_city_id` VARCHAR(65),
+    PRIMARY KEY (`id`),
+    FOREIGN KEY (platform_id) REFERENCES platform(id) ON DELETE CASCADE,
+    FOREIGN KEY (city_id) REFERENCES city(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+CREATE UNIQUE INDEX platform_city_idx1 on platform_city(`platform_id`, `city_id`, `platform_city_id`);

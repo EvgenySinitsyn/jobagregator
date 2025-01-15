@@ -1,6 +1,8 @@
+import pprint
+
 import requests
 from config import CONFIG
-from base import Resume, Profession, City, Platform
+from base import Resume, Profession, City, Platform, PlatformCity
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 
@@ -30,6 +32,8 @@ class HHParser:
         'higher': 'higher',
     }
 
+    max_page = 99
+
     def experience_months(self, exp_list):
         if not exp_list:
             return 0
@@ -44,7 +48,7 @@ class HHParser:
         months_difference = difference.years * 12 + difference.months
         return months_difference
 
-    def get_item_db_field_dict(self, item, city_db_object_dict, profession_db_object_dict, platform):
+    def get_resume_db_field_dict(self, item, city_db_object_dict, profession_db_object_dict, platform):
         city_name = item['area']['name']
         db_field_item_dict = {
             'platform': platform,
@@ -69,6 +73,17 @@ class HHParser:
         }
         return db_field_item_dict
 
+    def db_add_areas_info(self, areas, platform_id):
+        for area in areas:
+            self.db_add_areas_info(area['areas'], platform_id)
+            city_id = City.get_or_create(name=area['name'])[0]
+            platform_city_id = area['id']
+            PlatformCity.add(
+                platform_id=platform_id,
+                city_id=city_id,
+                platform_city_id=platform_city_id,
+            )
+
     def get_area(self):
         params = {
         }
@@ -77,6 +92,43 @@ class HHParser:
             headers=self.headers,
             params=params,
         ).json()
+        platform = Platform.get_or_create(name='HH')[0]
+        self.db_add_areas_info(response, platform)
+
+    def get_vacancies(
+            self,
+            city=None,
+            create_tm=None,
+            experience_from=None,
+            experience_to=None,
+            text=None,
+            page=0,
+    ):
+        platform = Platform.get_or_create(name='HH')[0]
+        params = {}
+        if text:
+            params['text'] = text
+
+        if experience_from:
+            for months, value in self.experience_dict.items():
+                if experience_from in months:
+                    params['experience'] = value
+
+        if city:
+            platform_city = PlatformCity.get_by_name(city)
+            if platform_city:
+                params['area'] = platform_city.platform_city_id
+
+        if create_tm:
+            date_object = datetime.strptime(create_tm, "%Y-%m-%d")
+            params['period'] = (datetime.now() - date_object).days
+
+        response = requests.get(
+            url=self.api_url + '/vacancies',
+            headers=self.headers,
+            params=params,
+        ).json()
+        pprint.pprint(response)
 
     def get_resumes(
             self,
@@ -100,6 +152,11 @@ class HHParser:
             'age_from': age_from,
             'age_to': age_to,
         }
+
+        if city:
+            platform_city = PlatformCity.get_by_name(city)
+            if platform_city:
+                params['area'] = platform_city.platform_city_id
         if create_tm:
             date_object = datetime.strptime(create_tm, "%Y-%m-%d")
             params['period'] = (datetime.now() - date_object).days
@@ -111,17 +168,15 @@ class HHParser:
 
         if text:
             params['text'] = text.split()
-        params['page'] = page
+        params['page'] = page % self.max_page
         response = requests.get(
             url=self.api_url + '/resumes',
             headers=self.headers,
             params=params,
         ).json()
-        print(response)
-        page += 1
         data = []
         for item in response['items']:
-            data.append(self.get_item_db_field_dict(item, city_db_object_dict, profession_db_object_dict, platform))
+            data.append(self.get_resume_db_field_dict(item, city_db_object_dict, profession_db_object_dict, platform))
         Resume.add(data)
         return data
 
@@ -134,4 +189,4 @@ keys = ['last_name', 'first_name', 'middle_name', 'title', 'created_at', 'update
 
 if __name__ == '__main__':
     hh = HHParser()
-    hh.get_resumes(3)
+    hh.get_vacancies(city='Казань')

@@ -12,8 +12,6 @@ class SuperjobParser:
         'X-Api-App-Id': api_key,
     }
 
-    url = api_url + '/resumes'
-
     currency_dict = {
         'rub': 'RUB',
         'usd': 'USD',
@@ -49,6 +47,16 @@ class SuperjobParser:
         tuple(range(73, 100000)): 4,
     }
 
+    def get_towns(self, keyword=None):
+        params = {
+            'keyword': keyword,
+        }
+        response = requests.get(
+            url=self.api_url + '/towns',
+            headers=self.headers,
+            params=params,
+        ).json()
+
     def get_resumes(
             self,
             city=None,
@@ -60,6 +68,7 @@ class SuperjobParser:
             education=None,
             age_from=None,
             age_to=None,
+            page=0,
     ):
         params = {
             'keyword': text,
@@ -86,13 +95,12 @@ class SuperjobParser:
         platform = Platform.get_or_create(name='Superjob')[0]
         city_db_object_dict = {}
         profession_db_object_dict = {}
-
+        params['page'] = page
         response = requests.get(
-            url=self.url,
+            url=self.api_url + '/resumes',
             headers=self.headers,
             params=params,
         ).json()
-        print(response)
         data = []
         for item in response.get('objects'):
             data.append(self.get_item_db_field_dict(item, city_db_object_dict, profession_db_object_dict, platform))
@@ -134,6 +142,7 @@ keys = ['id', 'last_profession', 'payment', 'currency', 'birthday', 'birthmonth'
         'link', 'short_link', 'gender', 'achievements', 'additional_info', 'date_published', 'date_last_modified',
         'profession', 'is_archive', 'timeToUpdate', 'id_user', 'portfolio', 'simple_contacts_open']
 
+
 if __name__ == '__main__':
     superjob_parser = SuperjobParser()
-    superjob_parser.get_resumes()
+    superjob_parser.get_towns('Казань')

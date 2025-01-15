@@ -28,7 +28,6 @@ hh_parser = HHParser()
 sj_parser = SuperjobParser()
 
 
-
 def ensure_aware(dt):
     if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)  # или используйте нужную вам временную зону
@@ -36,7 +35,7 @@ def ensure_aware(dt):
 
 
 @app.get("/resumes")
-async def read_root(
+async def read_resumes(
         city: Optional[str] = None,
         gender: Optional[str] = None,
         create_tm: Optional[str] = None,
@@ -46,11 +45,9 @@ async def read_root(
         education: Optional[str] = None,
         age_from: Optional[int] = None,
         age_to: Optional[int] = None,
+        page: Optional[int] = None,
 ):
-    for param, value in locals().items():
-        if value:
-            print(param, value)
-    print()
+    print(page)
     hh_data = hh_parser.get_resumes(
         city=city,
         gender=gender,
@@ -61,6 +58,7 @@ async def read_root(
         education=education,
         age_from=age_from,
         age_to=age_to,
+        page=page,
     )
     sj_data = sj_parser.get_resumes(
         city=city,
@@ -72,12 +70,14 @@ async def read_root(
         education=education,
         age_from=age_from,
         age_to=age_to,
+        page=page,
     )
-    res = sorted(
-        [
-            {**item, 'platform_resume_tm_create': ensure_aware(item['platform_resume_tm_create'])}
-            for item in (hh_data + sj_data)
-        ],
-        key=lambda item: item['platform_resume_tm_create'],
-    )
+    res = hh_data + sj_data
+    # res = sorted(
+    #     [
+    #         {**item, 'platform_resume_tm_create': ensure_aware(item['platform_resume_tm_create'])}
+    #         for item in (hh_data + sj_data)
+    #     ],
+    #     key=lambda item: item['platform_resume_tm_create'],
+    # )
     return res
