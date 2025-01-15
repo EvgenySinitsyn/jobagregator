@@ -140,3 +140,33 @@ class PlatformCity(BaseModel):
         return cls.select().join(City).where(
             City.name == name
         ).first()
+
+
+class Vacancy(BaseModel):
+    id = PrimaryKeyField()
+    platform = ForeignKeyField(Platform, backref='vacancies')
+    platform_vacancy_id = CharField()
+    platform_vacancy_tm_create = DateTimeField()
+    city = ForeignKeyField(City, backref='vacancies')
+    profession = ForeignKeyField(Profession, backref='vacancies')
+    salary_from = IntegerField()
+    salary_to = IntegerField()
+    schedule = CharField()
+    currency = CharField()
+    experience_months_from = IntegerField()
+    experience_months_to = IntegerField()
+    summary_info = JSONField()
+    link = CharField()
+    employer_name = CharField()
+    contact_email = CharField()
+    contact_phone = CharField()
+    contact_person = CharField()
+    tm = DateTimeField()
+
+    class Meta:
+        db_table = 'vacancy'
+
+    @classmethod
+    def add(cls, data_list):
+        with db.atomic():
+            cls.insert_many(data_list).on_conflict_replace().execute()
