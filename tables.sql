@@ -37,7 +37,7 @@ CREATE TABLE `resume` (
     `salary_from` INT,
     `salary_to` INT,
     `currency` ENUM('RUB', 'EUR', 'USD'),
-    `experience_months` INT,
+    `experience_months` INT 0,
     `summary_info` JSON,
     `link` VARCHAR(255),
     `tm` DATETIME DEFAULT NOW(),

@@ -1,8 +1,10 @@
-from playhouse.mysql_ext import JSONField
+import random
+
 from peewee import __exception_wrapper__ as exc_wrapper, OperationalError, IntegrityError
 from peewee import MySQLDatabase, Model, fn
-from peewee import PrimaryKeyField, DateField, CharField, IntegerField, DateTimeField, ForeignKeyField
+from peewee import PrimaryKeyField, DateField, CharField, IntegerField, DateTimeField, ForeignKeyField, Case
 from config import CONFIG
+from playhouse.mysql_ext import JSONField
 
 
 class RetryOperationalError(object):
@@ -78,6 +80,15 @@ class Profession(BaseModel):
             ),
         ).on_conflict_ignore().execute()
 
+    @classmethod
+    def get_by_text(cls, text):
+        predicate = True
+        for word in text.split():
+            predicate &= cls.name ** f'%{word}%'
+        result = list(cls.select().where(predicate))
+        random.shuffle(result)
+        return result[:5000]
+
 
 class Resume(BaseModel):
     id = PrimaryKeyField()
@@ -108,6 +119,12 @@ class Resume(BaseModel):
     def add(cls, data_list):
         with db.atomic():
             cls.insert_many(data_list).on_conflict_replace().execute()
+
+    @classmethod
+    def get_by_professions(cls, professions):
+        return cls.select().where(
+            cls.profession.in_(professions)
+        )
 
 
 class PlatformCity(BaseModel):
@@ -170,3 +187,9 @@ class Vacancy(BaseModel):
     def add(cls, data_list):
         with db.atomic():
             cls.insert_many(data_list).on_conflict_replace().execute()
+
+    @classmethod
+    def get_by_professions(cls, professions):
+        return cls.select().where(
+            cls.profession.in_(professions)
+        )

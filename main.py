@@ -1,3 +1,4 @@
+import pprint
 from datetime import timezone
 
 from fastapi import FastAPI
@@ -6,6 +7,7 @@ from starlette.middleware.cors import CORSMiddleware
 from api_hh import HHParser
 from api_superjob import SuperjobParser
 from typing import Optional
+from job_stat import read_stat
 
 app = FastAPI()
 
@@ -35,25 +37,22 @@ def ensure_aware(dt):
 
 
 @app.get("/resumes")
-async def read_resumes(
+async def get_resumes(
         city: Optional[str] = None,
         gender: Optional[str] = None,
         create_tm: Optional[str] = None,
         experience_from: Optional[int] = None,
-        experience_to: Optional[int] = None,
         position: Optional[str] = None,
         education: Optional[str] = None,
         age_from: Optional[int] = None,
         age_to: Optional[int] = None,
         page: Optional[int] = None,
 ):
-    print(page)
     hh_data = hh_parser.get_resumes(
         city=city,
         gender=gender,
         create_tm=create_tm,
         experience_from=experience_from,
-        experience_to=experience_to,
         text=position,
         education=education,
         age_from=age_from,
@@ -65,7 +64,6 @@ async def read_resumes(
         gender=gender,
         create_tm=create_tm,
         experience_from=experience_from,
-        experience_to=experience_to,
         text=position,
         education=education,
         age_from=age_from,
@@ -73,11 +71,40 @@ async def read_resumes(
         page=page,
     )
     res = hh_data + sj_data
-    # res = sorted(
-    #     [
-    #         {**item, 'platform_resume_tm_create': ensure_aware(item['platform_resume_tm_create'])}
-    #         for item in (hh_data + sj_data)
-    #     ],
-    #     key=lambda item: item['platform_resume_tm_create'],
-    # )
+    return res
+
+
+@app.get("/vacancies")
+async def get_vacancies(
+        city: Optional[str] = None,
+        create_tm: Optional[str] = None,
+        experience_from: Optional[int] = None,
+        salary: Optional[int] = None,
+        text: Optional[str] = None,
+        page: Optional[int] = 0,
+):
+    print(page)
+    hh_data = hh_parser.get_vacancies(
+        city=city,
+        create_tm=create_tm,
+        experience_from=experience_from,
+        salary=salary,
+        text=text,
+        page=page,
+    )
+    sj_data = sj_parser.get_vacancies(
+        city=city,
+        create_tm=create_tm,
+        experience_from=experience_from,
+        salary=salary,
+        text=text,
+        page=page,
+    )
+    res = hh_data + sj_data
+    return res
+
+
+@app.get('/stat')
+async def get_stat(text: Optional[str] = ''):
+    res = read_stat(text)
     return res

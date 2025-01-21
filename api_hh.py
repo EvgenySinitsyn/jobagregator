@@ -1,5 +1,3 @@
-import pprint
-
 import requests
 from config import CONFIG
 from base import Resume, Profession, City, Platform, PlatformCity, Vacancy
@@ -141,14 +139,17 @@ class HHParser:
             city=None,
             create_tm=None,
             experience_from=None,
-            experience_to=None,
+            salary=None,
             text=None,
             page=0,
     ):
         platform = Platform.get_or_create(name='HH')[0]
         city_db_object_dict = {}
         profession_db_object_dict = {}
-        params = {}
+        params = {
+            'page': page % self.max_page,
+            'salary': salary,
+        }
         if text:
             params['text'] = text
 
@@ -175,6 +176,7 @@ class HHParser:
         for item in response['items']:
             data.append(self.get_vacancy_db_field_dict(item, city_db_object_dict, profession_db_object_dict, platform))
         Vacancy.add(data)
+        return data
 
     def get_resumes(
             self,
@@ -182,7 +184,6 @@ class HHParser:
             gender=None,
             create_tm=None,
             experience_from=None,
-            experience_to=None,
             text=None,
             education=None,
             age_from=None,
@@ -197,6 +198,7 @@ class HHParser:
             'education_level': self.education_dict.get(education),
             'age_from': age_from,
             'age_to': age_to,
+            'page': page % self.max_page,
         }
 
         if city:
@@ -214,7 +216,6 @@ class HHParser:
 
         if text:
             params['text'] = text.split()
-        params['page'] = page % self.max_page
         response = requests.get(
             url=self.api_url + '/resumes',
             headers=self.headers,
@@ -235,4 +236,4 @@ keys = ['last_name', 'first_name', 'middle_name', 'title', 'created_at', 'update
 
 if __name__ == '__main__':
     hh = HHParser()
-    hh.get_vacancies()
+    hh.get_vacancies(page=1, text='ВТБ')
