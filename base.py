@@ -85,9 +85,8 @@ class Profession(BaseModel):
         predicate = True
         for word in text.split():
             predicate &= cls.name ** f'%{word}%'
-        result = list(cls.select().where(predicate))
-        random.shuffle(result)
-        return result[:5000]
+        result = list(cls.select().where(predicate).order_by(fn.Rand()).limit(5000))
+        return result
 
 
 class Resume(BaseModel):

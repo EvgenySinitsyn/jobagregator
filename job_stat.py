@@ -1,6 +1,7 @@
 import pprint
 from base import Profession, Resume, Vacancy
 
+
 DATA = {
     'names': [], # список профессий, нужно выводить в блоке под боковой панелью фильтров с возможностью прокрутки
     # все доли указаны в процентах
