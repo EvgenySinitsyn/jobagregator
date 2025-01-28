@@ -236,4 +236,4 @@ keys = ['last_name', 'first_name', 'middle_name', 'title', 'created_at', 'update
 
 if __name__ == '__main__':
     hh = HHParser()
-    hh.get_vacancies(page=1, text='ВТБ')
+    hh.get_resumes(page=1, text='ВТБ')

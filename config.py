@@ -24,6 +24,11 @@ try:
         'log_filename': os.environ.get('LOG_FILENAME'),
         'mysql_name_host': os.environ.get('MYSQL_NAME_HOST'),
         'mysql_port': int(os.environ.get('MYSQL_PORT')),
+        'mailru_password': os.environ.get('MAILRU_PASS'),
+        'email': os.environ.get('MAILRU_ADDR'),
+        'yandexmail': os.environ.get('YANDEXMAIL'),
+        'yandexmail_pass': os.environ.get('YANDEXMAIL_PASS'),
+        'secret_key': os.environ.get('SECRET_KEY')
     }
 except KeyError as error:
     print('KeyError: {}'.format(error))

@@ -90,3 +90,26 @@ CREATE TABLE `vacancy` (
     FOREIGN KEY (profession_id) REFERENCES profession(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 CREATE UNIQUE INDEX vacancy_idx1 on vacancy(`platform_id`, `platform_vacancy_id`);
+
+
+CREATE TABLE user (
+    `id` INT NOT NULL AUTO_INCREMENT,
+    `username` VARCHAR(255),
+    `full_name` VARCHAR(255),
+    `email` VARCHAR(255),
+    `hashed_password` VARCHAR(255),
+    `disabled` BOOL DEFAULT FALSE,
+    PRIMARY KEY (`id`),
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+CREATE UNIQUE INDEX user_idx1 on user(`username`);
+
+
+CREATE TABLE whatsapp_instance (
+    `id` INT NOT NULL AUTO_INCREMENT,
+    `instance_id` VARCHAR(30),
+    `instance_token` VARCHAR(255),
+    `user_id` INT,
+    `is_login` BOOL DEFAULT FALSE,
+    PRIMARY KEY (`id`),
+    FOREIGN KEY (`user_id`) REFERENCES user(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_0900_ai_ci;

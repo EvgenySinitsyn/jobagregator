@@ -1,7 +1,7 @@
 import random
 
 from peewee import __exception_wrapper__ as exc_wrapper, OperationalError, IntegrityError
-from peewee import MySQLDatabase, Model, fn
+from peewee import MySQLDatabase, Model, fn, BooleanField
 from peewee import PrimaryKeyField, DateField, CharField, IntegerField, DateTimeField, ForeignKeyField, Case
 from config import CONFIG
 from playhouse.mysql_ext import JSONField
@@ -192,3 +192,69 @@ class Vacancy(BaseModel):
         return cls.select().where(
             cls.profession.in_(professions)
         )
+
+
+class User(BaseModel):
+    id = PrimaryKeyField()
+    username = CharField()
+    full_name = CharField()
+    email = CharField()
+    hashed_password = CharField()
+    disabled = BooleanField()
+
+    class Meta:
+        db_table = 'user'
+
+    @classmethod
+    def get_by_username(cls, username):
+        return cls.get_or_none(cls.username == username)
+
+    @classmethod
+    def add(cls, username, hashed_password, email=None, fullname=None):
+        return cls.create(
+            username=username,
+            hashed_password=hashed_password,
+            email=email,
+            fullname=fullname,
+        )
+
+
+class WhatsappInstance(BaseModel):
+    id = PrimaryKeyField()
+    instance_id = CharField()
+    instance_token = CharField()
+    user_id = ForeignKeyField(User)
+    is_login = BooleanField()
+
+    class Meta:
+        db_table = 'whatsapp_instance'
+    @classmethod
+    def set_user(cls, user_id):
+        instance = cls.get_or_none(
+            cls.user_id == user_id,
+            cls.is_login == False,
+        )
+        if instance:
+            return instance
+        instance = cls.select().where(
+            cls.user_id.is_null(),
+            cls.is_login == False,
+        ).first()
+        if not instance:
+            return
+        instance.user_id = user_id
+
+        instance.save()
+        return instance
+
+    @classmethod
+    def login_user(cls, user_id):
+        cls.update({'is_login': True}).where(cls.user_id == user_id).execute()
+
+    @classmethod
+    def logout_user(cls, user_id):
+        cls.update({'user_id': None, 'is_login': False}).where(cls.user_id == user_id).execute()
+
+    @classmethod
+    def get_by_user_id(cls, user_id):
+        return cls.get_or_none(cls.user_id == user_id, cls.is_login == True)

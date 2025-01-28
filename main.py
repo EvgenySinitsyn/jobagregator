@@ -1,15 +1,17 @@
-import pprint
 from datetime import timezone
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from starlette.middleware.cors import CORSMiddleware
+from whatsapp_api_client_python import API
 
 from api_hh import HHParser
 from api_superjob import SuperjobParser
-from typing import Optional
+from typing import Optional, Annotated
 from job_stat import read_stat
+from login import router, User, get_current_active_user
 
 app = FastAPI()
+app.include_router(router)
 
 origins = [
     '*'
@@ -38,6 +40,7 @@ def ensure_aware(dt):
 
 @app.get("/resumes")
 async def get_resumes(
+        current_user: Annotated[User, Depends(get_current_active_user)],
         city: Optional[str] = None,
         gender: Optional[str] = None,
         create_tm: Optional[str] = None,
@@ -74,8 +77,9 @@ async def get_resumes(
     return res
 
 
-@app.get("/vacancies")
+@app.get("/vacancies", )
 async def get_vacancies(
+        current_user: Annotated[User, Depends(get_current_active_user)],
         city: Optional[str] = None,
         create_tm: Optional[str] = None,
         experience_from: Optional[int] = None,
@@ -83,7 +87,6 @@ async def get_vacancies(
         text: Optional[str] = None,
         page: Optional[int] = 0,
 ):
-    print(page)
     hh_data = hh_parser.get_vacancies(
         city=city,
         create_tm=create_tm,
@@ -105,6 +108,6 @@ async def get_vacancies(
 
 
 @app.get('/stat')
-async def get_stat(text: Optional[str] = ''):
+async def get_stat(current_user: Annotated[User, Depends(get_current_active_user)], text: Optional[str] = ''):
     res = read_stat(text)
     return res
