@@ -8,12 +8,13 @@ from jwt.exceptions import InvalidTokenError
 from passlib.context import CryptContext
 from pydantic import BaseModel
 from config import CONFIG
-from base import User as UserDB
+from base import User as UserDB, WhatsappInstance
+from green_api import GreenApi
 
 
 SECRET_KEY = CONFIG.get('secret_key')
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 1000000
 
 router = APIRouter()
 
@@ -166,3 +167,20 @@ async def read_own_items(
     current_user: Annotated[User, Depends(get_current_active_user)],
 ):
     return [{"item_id": "Foo", "owner": current_user.username}]
+
+
+@router.get("/logout")
+async def logout(
+        current_user: Annotated[User, Depends(get_current_active_user)],
+):
+    user_db = UserDB.get_by_username(current_user.username)
+    whatsapp_instance = WhatsappInstance.get_by_user_id(user_id=user_db.id)
+    if not whatsapp_instance:
+        return
+    whatsapp_instance.user_id = None
+    whatsapp_instance.is_login = False
+    whatsapp_instance.save()
+
+    green_api = GreenApi(whatsapp_instance.instance_id, whatsapp_instance.instance_token)
+    print('ok')
+    await green_api.logout()

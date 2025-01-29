@@ -5,60 +5,16 @@ import websockets
 import json
 import jwt
 from config import CONFIG
-from base import User, WhatsappInstance
-import aiohttp
+from base import User, WhatsappInstance, WhatsappMessage
+from green_api import GreenApi
 
+
+not_logged_users = set()
+user_websockets = {}
 whatsapp_listeners = {}
 
 SECRET_KEY = CONFIG.get('secret_key')
 ALGORITHM = "HS256"
-
-
-class GreenApi:
-    green_api_url = 'https://1103.api.green-api.com'
-    headers = {
-        'Content-Type': 'application/json'
-    }
-
-    def __init__(self, instance_id, instance_token):
-        self.instance_id = instance_id
-        self.instance_token = instance_token
-
-    async def get_qr(self):
-        async with aiohttp.ClientSession() as session:
-            url = f'{self.green_api_url}/waInstance{self.instance_id}/qr/{self.instance_token}'
-            async with session.get(url, headers=self.headers) as response:
-                if response.status == 200:
-                    response_data = await response.json()
-                    return response_data
-
-    async def receive_notification(self):
-        async with aiohttp.ClientSession() as session:
-            url = f'{self.green_api_url}/waInstance{self.instance_id}/receiveNotification/{self.instance_token}'
-            async with session.get(url, headers=self.headers) as response:
-                if response.status == 200:
-                    response_data = await response.json()
-                    return response_data
-
-    async def delete_notification(self, receipt_id):
-        async with aiohttp.ClientSession() as session:
-            url = f'{self.green_api_url}/waInstance{self.instance_id}/deleteNotification/{self.instance_token}/{receipt_id}'
-            async with session.delete(url, headers=self.headers) as response:
-                if response.status == 200:
-                    response_data = await response.json()
-                    return response_data
-
-    async def send_message(self, phone, message):
-        payload = {
-            "chatId": f"{phone}@c.us",
-            "message": message,
-        }
-        async with aiohttp.ClientSession() as session:
-            url = f'{self.green_api_url}/waInstance{self.instance_id}/sendMessage/{self.instance_token}'
-            async with session.post(url, headers=self.headers, json=payload) as response:
-                if response.status == 200:
-                    response_data = await response.json()
-                    return response_data
 
 
 def check_text_message(obj):
@@ -66,47 +22,90 @@ def check_text_message(obj):
     if not body:
         return False
     message_data = body.get('messageData')
+    if not message_data:
+        return
     if not message_data.get('typeMessage') == 'textMessage':
         return False
     return True
 
 
-async def handler(websocket):
-    async def check_notification(green_api, websocket):
-        nonlocal logged_in
-        if not logged_in:
-            while not logged_in:
-                notification = await green_api.receive_notification()
-                if notification:
-                    await green_api.delete_notification(notification.get('receiptId'))
-                    if notification.get('body').get('stateInstance') == 'authorized':
-                        logged_in = True
-                        return
-        else:
-            while True:
-                notification = await green_api.receive_notification()
-                if notification:
-                    await green_api.delete_notification(notification.get('receiptId'))
-                    pprint.pprint(notification)
-                    if not check_text_message(notification):
-                        continue
-                    income_message = {
-                        'sender': notification['body']['senderData'],
-                        'text': notification['body']['messageData'],
-                    }
-                    await websocket.send(json.dumps([income_message]))
+async def clean_user(user_id, websocket):
+    del user_websockets[user_id]
+    if websocket in whatsapp_listeners:
+        whatsapp_listeners[websocket].cancel()
+        try:
+            await whatsapp_listeners[websocket]
+        except asyncio.CancelledError:
+            pass
+        del whatsapp_listeners[websocket]
 
-    async def send_qr(green_api):
-        logged = logged_in
-        while not logged:
+
+async def handler(websocket):
+    async def check_notification(green_api, user_id):
+        try:
+            nonlocal logged_in
+            if not logged_in:
+                while user_id in not_logged_users:
+                    notification = await green_api.receive_notification()
+                    if notification:
+                        await green_api.delete_notification(notification.get('receiptId'))
+                        if notification.get('body').get('stateInstance') == 'authorized':
+
+                            for user_websocket in user_websockets[user_id]:
+                                logged_message = {
+                                    'type': 'whatsapp logged',
+                                }
+                                await user_websocket.send(json.dumps([logged_message]))
+                            not_logged_users.remove(user_id)
+                            return
+            else:
+                print('logged')
+                while True:
+                    instance = WhatsappInstance.get_by_logged_user(user_id)
+                    if not instance:
+                        await clean_user(user_id, websocket)
+                        return
+                    print('check notifications logged')
+                    notification = await green_api.receive_notification()
+                    if notification:
+                        await green_api.delete_notification(notification.get('receiptId'))
+                        pprint.pprint(notification)
+                        if not check_text_message(notification):
+                            continue
+                        try:
+                            phone = notification['body']['senderData']['chatId'].split('@')[0]
+                            income_message = {
+                                'user_id': user_id,
+                                'subscriber_phone': int(phone),
+                                'subscriber_name': notification['body']['senderData']['chatName'],
+                                'text': notification['body']['messageData']['textMessageData']['textMessage'],
+                                'type': WhatsappMessage.TYPE_INCOMING,
+                            }
+
+                            WhatsappMessage.add(**income_message)
+                            for user_websocket in user_websockets[user_id]:
+                                await user_websocket.send(json.dumps([income_message]))
+                        except Exception as ex:
+                            print(ex)
+
+        except Exception as ex:
+            print(ex)
+
+    async def send_qr(green_api, user_id):
+        while user_id in not_logged_users:
             qr = await green_api.get_qr()
-            await websocket.send(json.dumps([qr]))
-            await asyncio.sleep(1)
-            logged = logged_in
+            for user_websocket in user_websockets[user_id]:
+                try:
+                    print(f'send qr to {user_websocket}')
+                    await user_websocket.send(json.dumps([qr]))
+                    await asyncio.sleep(1)
+                except Exception as ex:
+                    user_websockets[user_id].remove(user_websocket)
 
     try:
         async for message in websocket:
             data = json.loads(message)
+            print(data)
             token = data.get('access_token')
 
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -115,45 +114,75 @@ async def handler(websocket):
             user = User.get_by_username(username)
             if not user:
                 return
-            instance = WhatsappInstance.get_by_user_id(user.id)
+            instance = WhatsappInstance.get_by_logged_user(user.id)
             if not instance:
                 instance = WhatsappInstance.set_user(user.id)
                 if not instance:
                     return
                 green_api = GreenApi(instance.instance_id, instance.instance_token)
-
+                not_logged_users.add(user.id)
                 logged_in = False
-                qr_task = asyncio.create_task(send_qr(green_api))
-                login_task = asyncio.create_task(check_notification(green_api, websocket))
-                await login_task
-                qr_task.cancel()
-                try:
+                if user.id in user_websockets:
+                    print('ERROR')
+                    if websocket not in user_websockets[user.id]:
+
+                        user_websockets[user.id].append(websocket)
+                else:
+                    user_websockets[user.id] = [websocket]
+                    qr_task = asyncio.create_task(send_qr(green_api, user.id))
+                    whatsapp_listeners[websocket] = asyncio.create_task(check_notification(green_api, user.id))
                     await qr_task
-                except asyncio.CancelledError:
-                    pass
-                WhatsappInstance.login_user(user.id)
+                    WhatsappInstance.login_user(user.id)
+
+                    if user.id in user_websockets:
+                        if websocket not in user_websockets[user.id]:
+                            user_websockets[user.id].append(websocket)
+                        else:
+                            logged_in = True
+                            user_websockets[user.id] = [websocket]
+                            whatsapp_listeners[websocket] = asyncio.create_task(check_notification(green_api, user.id))
+
 
             else:
                 logged_in = True
-
+                if data.get('type') == WhatsappMessage.TYPE_OUTGOING:
+                    outgoing_message = {
+                        'user_id': user.id,
+                        'subscriber_phone': data.get('subscriber_phone'),
+                        'subscriber_name': data.get('subscriber_name'),
+                        'text': data.get('text'),
+                        'type': WhatsappMessage.TYPE_OUTGOING,
+                    }
+                    WhatsappMessage.add(**outgoing_message)
                 green_api = GreenApi(instance.instance_id, instance.instance_token)
-                print(whatsapp_listeners)
-                if websocket not in whatsapp_listeners:
-                    whatsapp_listeners[websocket] = asyncio.create_task(check_notification(green_api, websocket))
+                if user.id in user_websockets:
+                    if websocket not in user_websockets[user.id]:
+                        user_websockets[user.id].append(websocket)
+                else:
+                    user_websockets[user.id] = [websocket]
+                    whatsapp_listeners[websocket] = asyncio.create_task(check_notification(green_api, user.id))
                 await green_api.send_message(79857848287, data.get('text'))
-                print(data.get('text'))
 
     except websockets.exceptions.ConnectionClosed as e:
         print(f"Connection closed: {e}")
+    except Exception as ex:
+        print(ex)
     finally:
         if websocket in whatsapp_listeners:
-            whatsapp_listeners[websocket].cancel()
-            try:
-                await whatsapp_listeners[websocket]
-            except asyncio.CancelledError:
-                pass
-            del whatsapp_listeners[websocket]
-        print(f"canceled")
+            if user.id in user_websockets and websocket in user_websockets[user.id]:
+                user_websockets[user.id].remove(websocket)
+                print(f"canceled not all")
+                print(user_websockets[user.id])
+
+            if not user_websockets[user.id]:
+                del user_websockets[user.id]
+                whatsapp_listeners[websocket].cancel()
+                try:
+                    await whatsapp_listeners[websocket]
+                except asyncio.CancelledError:
+                    pass
+                del whatsapp_listeners[websocket]
+                print(f"canceled")
 
 
 async def main():

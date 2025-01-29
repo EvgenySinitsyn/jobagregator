@@ -2,7 +2,7 @@ import random
 
 from peewee import __exception_wrapper__ as exc_wrapper, OperationalError, IntegrityError
 from peewee import MySQLDatabase, Model, fn, BooleanField
-from peewee import PrimaryKeyField, DateField, CharField, IntegerField, DateTimeField, ForeignKeyField, Case
+from peewee import PrimaryKeyField, DateField, CharField, IntegerField, DateTimeField, ForeignKeyField, Case, TextField
 from config import CONFIG
 from playhouse.mysql_ext import JSONField
 
@@ -228,6 +228,7 @@ class WhatsappInstance(BaseModel):
 
     class Meta:
         db_table = 'whatsapp_instance'
+
     @classmethod
     def set_user(cls, user_id):
         instance = cls.get_or_none(
@@ -257,4 +258,58 @@ class WhatsappInstance(BaseModel):
 
     @classmethod
     def get_by_user_id(cls, user_id):
+        return cls.get_or_none(cls.user_id == user_id)
+
+    @classmethod
+    def get_by_logged_user(cls, user_id):
         return cls.get_or_none(cls.user_id == user_id, cls.is_login == True)
+
+
+class WhatsappMessage(BaseModel):
+    id = PrimaryKeyField()
+    user_id = IntegerField()
+    subscriber_phone = CharField()
+    subscriber_name = CharField()
+    text = TextField()
+    type = CharField()
+    tm = DateTimeField()
+
+    TYPE_INCOMING = 'INCOMING'
+    TYPE_OUTGOING = 'OUTGOING'
+
+    class Meta:
+        db_table = 'whatsapp_message'
+
+    @classmethod
+    def add(
+            cls,
+            user_id,
+            subscriber_phone,
+            subscriber_name,
+            text,
+            type,
+    ):
+        cls.create(
+            user_id=user_id,
+            subscriber_phone=subscriber_phone,
+            subscriber_name=subscriber_name,
+            text=text,
+            type=type,
+        )
+
+    @classmethod
+    def get_chat(
+            cls,
+            user_id,
+            subscriber_phone,
+    ):
+        return list((cls.select().where(
+            cls.user_id == user_id,
+            cls.subscriber_phone == subscriber_phone
+        ).dicts()))
+
+    @classmethod
+    def get_subscriber_list(cls, user_id):
+        return cls.select().where(
+            cls.user_id == user_id,
+        ).group_by(cls.subscriber_phone)

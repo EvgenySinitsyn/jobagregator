@@ -113,3 +113,17 @@ CREATE TABLE whatsapp_instance (
     PRIMARY KEY (`id`),
     FOREIGN KEY (`user_id`) REFERENCES user(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+
+
+CREATE TABLE whatsapp_message (
+    `id` INT NOT NULL AUTO_INCREMENT,
+    `user_id` INT,
+    `subscriber_phone` VARCHAR(11),
+    `subscriber_name` VARCHAR(255),
+    `text` TEXT,
+    `type` ENUM('INCOMING', 'OUTGOING'),
+    `tm` DATETIME DEFAULT NOW(),
+    PRIMARY KEY (`id`),
+    FOREIGN KEY (`user_id`) REFERENCES user(id) ON DELETE CASCADE
+)  ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+CREATE INDEX whatsapp_message_idx1 on whatsapp_message(`subscriber_phone`);

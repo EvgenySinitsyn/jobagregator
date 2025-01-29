@@ -1,3 +1,4 @@
+import pprint
 from datetime import timezone
 
 from fastapi import FastAPI, Depends
@@ -9,6 +10,7 @@ from api_superjob import SuperjobParser
 from typing import Optional, Annotated
 from job_stat import read_stat
 from login import router, User, get_current_active_user
+from base import WhatsappMessage, User as UserDB
 
 app = FastAPI()
 app.include_router(router)
@@ -111,3 +113,15 @@ async def get_vacancies(
 async def get_stat(current_user: Annotated[User, Depends(get_current_active_user)], text: Optional[str] = ''):
     res = read_stat(text)
     return res
+
+
+@app.get('/get_chat')
+async def get_stat(
+        current_user: Annotated[User, Depends(get_current_active_user)],
+        subscriber_phone: str = '',
+):
+    print(subscriber_phone)
+    user = UserDB.get_by_username(current_user.username)
+    chat = WhatsappMessage.get_chat(user.id, subscriber_phone)
+    pprint.pprint(chat)
+    return chat
