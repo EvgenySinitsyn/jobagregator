@@ -38,6 +38,7 @@ CREATE TABLE `resume` (
     `salary_to` INT,
     `currency` ENUM('RUB', 'EUR', 'USD'),
     `experience_months` INT 0,
+    `phone` VARCHAR(11),
     `summary_info` JSON,
     `link` VARCHAR(255),
     `tm` DATETIME DEFAULT NOW(),
@@ -121,9 +122,31 @@ CREATE TABLE whatsapp_message (
     `subscriber_phone` VARCHAR(11),
     `subscriber_name` VARCHAR(255),
     `text` TEXT,
-    `type` ENUM('INCOMING', 'OUTGOING'),
+    `type` ENUM('incoming', 'outgoing'),
     `tm` DATETIME DEFAULT NOW(),
     PRIMARY KEY (`id`),
     FOREIGN KEY (`user_id`) REFERENCES user(id) ON DELETE CASCADE
 )  ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_0900_ai_ci;
 CREATE INDEX whatsapp_message_idx1 on whatsapp_message(`subscriber_phone`);
+
+
+CREATE TABLE whatsapp_subscriber (
+    `id` INT NOT NULL AUTO_INCREMENT,
+    `phone` VARCHAR(11),
+    `name` VARCHAR(255),
+    `tm` DATETIME DEFAULT NOW(),
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+CREATE UNIQUE INDEX whatsapp_subscriber_idx1 on whatsapp_subscriber(`phone`);
+
+
+CREATE TABLE whatsapp_user_subscriber (
+    `id` INT NOT NULL AUTO_INCREMENT,
+    `user_id` INT,
+    `whatsapp_subscriber_id` INT,
+    `tm` DATETIME DEFAULT NOW(),
+    PRIMARY KEY (`id`),
+    FOREIGN KEY (`user_id`) REFERENCES user(id) ON DELETE CASCADE,
+    FOREIGN KEY (`whatsapp_subscriber_id`) REFERENCES whatsapp_subscriber(id) ON DELETE CASCADE
+)  ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+CREATE UNIQUE INDEX whatsapp_user_subscriber_idx1 on whatsapp_user_subscriber(user_id, whatsapp_subscriber_id);

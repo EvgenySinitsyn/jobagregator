@@ -1,8 +1,10 @@
+import random
 import requests
 from config import CONFIG
 from base import Resume, Profession, City, Platform, PlatformCity, Vacancy
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
+import aiohttp
 
 
 class HHParser:
@@ -75,6 +77,7 @@ class HHParser:
             'experience_months': item.get('total_experience') and item.get('total_experience').get('months'),
             'summary_info': item,
             'link': item['alternate_url'],
+            'phone': random.choice(CONFIG.get('temp_phones'))
         }
         return db_field_item_dict
 

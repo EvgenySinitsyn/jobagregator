@@ -54,3 +54,15 @@ class GreenApi:
                 if response.status == 200:
                     response_data = await response.json()
                     return response_data
+
+    async def get_chat(self, phone):
+        payload = {
+            "chatId": f"{phone}@c.us",
+            "count": 1000,
+        }
+        async with aiohttp.ClientSession() as session:
+            url = f'{self.green_api_url}/waInstance{self.instance_id}/GetChatHistory/{self.instance_token}'
+            async with session.post(url, headers=self.headers, json=payload) as response:
+                if response.status == 200:
+                    response_data = await response.json()
+                    return response_data

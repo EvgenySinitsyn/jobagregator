@@ -2,6 +2,7 @@ import requests
 from config import CONFIG
 from datetime import datetime
 from base import Platform, Profession, City, Resume, Vacancy
+import random
 
 
 class SuperjobParser:
@@ -179,6 +180,7 @@ class SuperjobParser:
             'experience_months': item['experience_month_count'],
             'summary_info': item,
             'link': item['link'],
+            'phone': random.choice(CONFIG.get('temp_phones'))
         }
         return db_field_item_dict
 

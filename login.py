@@ -175,6 +175,7 @@ async def logout(
 ):
     user_db = UserDB.get_by_username(current_user.username)
     whatsapp_instance = WhatsappInstance.get_by_user_id(user_id=user_db.id)
+    print('ТЫ ЧЕ ТУТ ЗАБЫЛ???')
     if not whatsapp_instance:
         return
     whatsapp_instance.user_id = None
@@ -183,4 +184,4 @@ async def logout(
 
     green_api = GreenApi(whatsapp_instance.instance_id, whatsapp_instance.instance_token)
     print('ok')
-    await green_api.logout()
+    print(await green_api.logout())

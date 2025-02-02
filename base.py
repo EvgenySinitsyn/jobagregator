@@ -105,6 +105,7 @@ class Resume(BaseModel):
     experience_months = IntegerField()
     summary_info = JSONField()
     link = CharField()
+    phone = CharField()
     tm = DateTimeField()
 
     class Meta:
@@ -254,6 +255,7 @@ class WhatsappInstance(BaseModel):
 
     @classmethod
     def logout_user(cls, user_id):
+        print("ТЫ ЧЕ ТУТ ЗАБЫЛ???")
         cls.update({'user_id': None, 'is_login': False}).where(cls.user_id == user_id).execute()
 
     @classmethod
@@ -274,8 +276,8 @@ class WhatsappMessage(BaseModel):
     type = CharField()
     tm = DateTimeField()
 
-    TYPE_INCOMING = 'INCOMING'
-    TYPE_OUTGOING = 'OUTGOING'
+    TYPE_INCOMING = 'incoming'
+    TYPE_OUTGOING = 'outgoing'
 
     class Meta:
         db_table = 'whatsapp_message'
@@ -310,6 +312,58 @@ class WhatsappMessage(BaseModel):
 
     @classmethod
     def get_subscriber_list(cls, user_id):
-        return cls.select().where(
+        return list(cls.select(cls.subscriber_phone).where(
             cls.user_id == user_id,
-        ).group_by(cls.subscriber_phone)
+        ).group_by(cls.subscriber_phone).dicts())
+
+
+class WhatsappSubscriber(BaseModel):
+    id = PrimaryKeyField()
+    phone = CharField()
+    name = CharField()
+    tm = DateTimeField()
+
+    class Meta:
+        db_table = 'whatsapp_subscriber'
+
+    @classmethod
+    def add(cls, phone, name=None):
+        # return cls.insert(phone=phone, name=name).on_conflict(update={
+        #     cls.name: name
+        # }).execute()
+        print('sub add')
+        whatsapp_subscriber = cls.get_or_none(cls.phone == phone)
+        if whatsapp_subscriber:
+            if not whatsapp_subscriber.name and name:
+                whatsapp_subscriber.name = name
+            return whatsapp_subscriber
+        return cls.create(phone=phone, name=name)
+
+    @classmethod
+    def get_by_phone(cls, phone):
+        return cls.get_or_none(cls.phone == phone)
+
+
+class WhatsappUserSubscriber(BaseModel):
+    id = PrimaryKeyField()
+    user_id = ForeignKeyField(User)
+    whatsapp_subscriber_id = ForeignKeyField(WhatsappSubscriber)
+    tm = DateTimeField()
+
+    class Meta:
+        db_table = 'whatsapp_user_subscriber'
+
+    @classmethod
+    def add(cls, user_id, whatsapp_subscriber_id):
+        print('bind add')
+        cls.insert(user_id=user_id, whatsapp_subscriber_id=whatsapp_subscriber_id).on_conflict_ignore().execute()
+
+    @classmethod
+    def get_subscriber_list(cls, user_id):
+        return list(cls.select(
+            cls,
+            WhatsappSubscriber.phone.alias('subscriber_phone'),
+            WhatsappSubscriber.name.alias('subscriber_name'),
+        ).join(WhatsappSubscriber, on=(
+            cls.whatsapp_subscriber_id == WhatsappSubscriber.id
+        )).where(cls.user_id == user_id).dicts())

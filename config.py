@@ -28,7 +28,8 @@ try:
         'email': os.environ.get('MAILRU_ADDR'),
         'yandexmail': os.environ.get('YANDEXMAIL'),
         'yandexmail_pass': os.environ.get('YANDEXMAIL_PASS'),
-        'secret_key': os.environ.get('SECRET_KEY')
+        'secret_key': os.environ.get('SECRET_KEY'),
+        'temp_phones': os.environ.get('TEMP_PHONES').split(',')
     }
 except KeyError as error:
     print('KeyError: {}'.format(error))

@@ -5,7 +5,7 @@ import websockets
 import json
 import jwt
 from config import CONFIG
-from base import User, WhatsappInstance, WhatsappMessage
+from base import User, WhatsappInstance, WhatsappMessage, WhatsappSubscriber, WhatsappUserSubscriber
 from green_api import GreenApi
 
 
@@ -69,19 +69,20 @@ async def handler(websocket):
                     notification = await green_api.receive_notification()
                     if notification:
                         await green_api.delete_notification(notification.get('receiptId'))
-                        pprint.pprint(notification)
                         if not check_text_message(notification):
                             continue
                         try:
                             phone = notification['body']['senderData']['chatId'].split('@')[0]
+                            name = notification['body']['senderData']['chatName']
                             income_message = {
                                 'user_id': user_id,
                                 'subscriber_phone': int(phone),
-                                'subscriber_name': notification['body']['senderData']['chatName'],
+                                'subscriber_name': name,
                                 'text': notification['body']['messageData']['textMessageData']['textMessage'],
                                 'type': WhatsappMessage.TYPE_INCOMING,
                             }
-
+                            whatsapp_subscriber = WhatsappSubscriber.add(phone, name)
+                            WhatsappUserSubscriber.add(user_id, whatsapp_subscriber.id)
                             WhatsappMessage.add(**income_message)
                             for user_websocket in user_websockets[user_id]:
                                 await user_websocket.send(json.dumps([income_message]))
@@ -94,9 +95,12 @@ async def handler(websocket):
     async def send_qr(green_api, user_id):
         while user_id in not_logged_users:
             qr = await green_api.get_qr()
+            if qr.get('type') == 'alreadyLogged':
+                return
             for user_websocket in user_websockets[user_id]:
                 try:
                     print(f'send qr to {user_websocket}')
+                    print(qr)
                     await user_websocket.send(json.dumps([qr]))
                     await asyncio.sleep(1)
                 except Exception as ex:
@@ -105,7 +109,6 @@ async def handler(websocket):
     try:
         async for message in websocket:
             data = json.loads(message)
-            print(data)
             token = data.get('access_token')
 
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
@@ -132,6 +135,7 @@ async def handler(websocket):
                     qr_task = asyncio.create_task(send_qr(green_api, user.id))
                     whatsapp_listeners[websocket] = asyncio.create_task(check_notification(green_api, user.id))
                     await qr_task
+                    print('login')
                     WhatsappInstance.login_user(user.id)
 
                     if user.id in user_websockets:
@@ -141,7 +145,6 @@ async def handler(websocket):
                             logged_in = True
                             user_websockets[user.id] = [websocket]
                             whatsapp_listeners[websocket] = asyncio.create_task(check_notification(green_api, user.id))
-
 
             else:
                 logged_in = True
@@ -153,6 +156,8 @@ async def handler(websocket):
                         'text': data.get('text'),
                         'type': WhatsappMessage.TYPE_OUTGOING,
                     }
+                    whatsapp_subscriber = WhatsappSubscriber.add(data.get('subscriber_phone'), data.get('subscriber_name'))
+                    WhatsappUserSubscriber.add(user.id, whatsapp_subscriber.id)
                     WhatsappMessage.add(**outgoing_message)
                 green_api = GreenApi(instance.instance_id, instance.instance_token)
                 if user.id in user_websockets:

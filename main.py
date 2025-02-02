@@ -8,9 +8,11 @@ from whatsapp_api_client_python import API
 from api_hh import HHParser
 from api_superjob import SuperjobParser
 from typing import Optional, Annotated
+
+from green_api import GreenApi
 from job_stat import read_stat
 from login import router, User, get_current_active_user
-from base import WhatsappMessage, User as UserDB
+from base import WhatsappMessage, User as UserDB, WhatsappInstance, WhatsappUserSubscriber, WhatsappSubscriber
 
 app = FastAPI()
 app.include_router(router)
@@ -115,13 +117,51 @@ async def get_stat(current_user: Annotated[User, Depends(get_current_active_user
     return res
 
 
+def get_chat_data(chat, subscriber_phone):
+    result = []
+    name = subscriber_phone
+    subscriber = WhatsappSubscriber.get_by_phone(subscriber_phone)
+    if subscriber and subscriber.name:
+        name = subscriber.name
+    for message in reversed(chat):
+        if message.get('typeMessage') == 'textMessage':
+            message_data = {
+                'type': message.get('type'),
+                'subscriber_name': name,
+                'text': message.get('textMessage'),
+            }
+            result.append(message_data)
+    return result
+
+
 @app.get('/get_chat')
 async def get_stat(
         current_user: Annotated[User, Depends(get_current_active_user)],
         subscriber_phone: str = '',
 ):
-    print(subscriber_phone)
+    # print(subscriber_phone)
+    # user = UserDB.get_by_username(current_user.username)
+    # chat = WhatsappMessage.get_chat(user.id, subscriber_phone)
+    # pprint.pprint(chat)
+    # return chat
+    user_db = UserDB.get_by_username(current_user.username)
+    whatsapp_instance = WhatsappInstance.get_by_user_id(user_id=user_db.id)
+    if not whatsapp_instance:
+        return
+
+    green_api = GreenApi(whatsapp_instance.instance_id, whatsapp_instance.instance_token)
+    chat = await green_api.get_chat(subscriber_phone)
+    chat_data = get_chat_data(chat, subscriber_phone)
+    pprint.pprint(chat_data)
+
+    return chat_data
+
+
+@app.get('/get_subscribers')
+async def get_subscribers(
+        current_user: Annotated[User, Depends(get_current_active_user)]
+):
     user = UserDB.get_by_username(current_user.username)
-    chat = WhatsappMessage.get_chat(user.id, subscriber_phone)
-    pprint.pprint(chat)
-    return chat
+    subscribers = WhatsappUserSubscriber.get_subscriber_list(user.id)
+    pprint.pprint(subscribers)
+    return subscribers
