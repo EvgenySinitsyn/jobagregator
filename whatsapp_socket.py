@@ -191,15 +191,11 @@ async def handler(websocket):
 
 
 async def main():
-    # Запускаем WebSocket-сервер
     start_server = websockets.serve(handler, 'localhost', 8081)
 
-    # Запуск сервера
     async with start_server:
-        print("Сервер запущен на ws://localhost:8081")
-        await asyncio.Future()  # Блокируем выполнение
+        await asyncio.Future()
 
 
-# Запускаем цикл событий
 if __name__ == "__main__":
     asyncio.run(main())

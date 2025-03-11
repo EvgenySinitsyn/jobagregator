@@ -5,6 +5,7 @@ from base import Resume, Profession, City, Platform, PlatformCity, Vacancy
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 import aiohttp
+from utils import filter_params
 
 
 class HHParser:
@@ -137,7 +138,7 @@ class HHParser:
         platform = Platform.get_or_create(name='HH')[0]
         self.db_add_areas_info(response, platform)
 
-    def get_vacancies(
+    async def get_vacancies(
             self,
             city=None,
             create_tm=None,
@@ -146,6 +147,7 @@ class HHParser:
             text=None,
             page=0,
     ):
+        print('start hh vacancies')
         platform = Platform.get_or_create(name='HH')[0]
         city_db_object_dict = {}
         profession_db_object_dict = {}
@@ -170,18 +172,23 @@ class HHParser:
             date_object = datetime.strptime(create_tm, "%Y-%m-%d")
             params['period'] = (datetime.now() - date_object).days
 
-        response = requests.get(
-            url=self.api_url + '/vacancies',
-            headers=self.headers,
-            params=params,
-        ).json()
+        async with aiohttp.ClientSession() as session:
+            url = self.api_url + '/vacancies'
+            async with session.get(url, headers=self.headers, params=filter_params(**params)) as response:
+                if response.status == 200:
+                    print('hh ok')
+                    response = await response.json()
+                else:
+                    print("ERROR API HH")
+                    return
+
         data = []
         for item in response['items']:
             data.append(self.get_vacancy_db_field_dict(item, city_db_object_dict, profession_db_object_dict, platform))
         Vacancy.add(data)
         return data
 
-    def get_resumes(
+    async def get_resumes(
             self,
             city=None,
             gender=None,
@@ -193,6 +200,7 @@ class HHParser:
             age_to=None,
             page=0,
     ):
+        print('start hh resumes')
         platform = Platform.get_or_create(name='HH')[0]
         city_db_object_dict = {}
         profession_db_object_dict = {}
@@ -219,11 +227,17 @@ class HHParser:
 
         if text:
             params['text'] = text.split()
-        response = requests.get(
-            url=self.api_url + '/resumes',
-            headers=self.headers,
-            params=params,
-        ).json()
+
+        async with aiohttp.ClientSession() as session:
+            url = self.api_url + '/resumes'
+            async with session.get(url, headers=self.headers, params=filter_params(**params)) as response:
+                if response.status == 200:
+                    print('hh ok')
+                    response = await response.json()
+                else:
+                    print("ERROR API HH")
+                    return
+
         data = []
         for item in response['items']:
             data.append(self.get_resume_db_field_dict(item, city_db_object_dict, profession_db_object_dict, platform))
@@ -236,6 +250,7 @@ keys = ['last_name', 'first_name', 'middle_name', 'title', 'created_at', 'update
         'salary', 'photo', 'total_experience', 'certificate', 'owner', 'can_view_full_info', 'negotiations_history',
         'hidden_fields', 'actions', 'url', 'alternate_url', 'id', 'download', 'platform', 'education', 'experience',
         'favorited', 'viewed', 'marked', 'last_negotiation']
+
 
 if __name__ == '__main__':
     hh = HHParser()

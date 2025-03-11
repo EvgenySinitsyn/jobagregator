@@ -1,8 +1,11 @@
+import aiohttp
 import requests
 from config import CONFIG
 from datetime import datetime
 from base import Platform, Profession, City, Resume, Vacancy
 import random
+
+from utils import filter_params
 
 
 class SuperjobParser:
@@ -65,7 +68,7 @@ class SuperjobParser:
             params=params,
         ).json()
 
-    def get_vacancies(
+    async def get_vacancies(
             self,
             city=None,
             create_tm=None,
@@ -75,6 +78,7 @@ class SuperjobParser:
             page=0,
             count=20,
     ):
+        print('start superjob vacancies')
         platform = Platform.get_or_create(name='Superjob')[0]
         city_db_object_dict = {}
         profession_db_object_dict = {}
@@ -97,18 +101,22 @@ class SuperjobParser:
                 if experience_from in months:
                     params['experience'] = value
 
-        response = requests.get(
-            url=self.api_url + '/vacancies',
-            headers=self.headers,
-            params=params,
-        ).json()
+        async with aiohttp.ClientSession() as session:
+            url = self.api_url + '/vacancies'
+            async with session.get(url, headers=self.headers, params=filter_params(**params)) as response:
+                if response.status == 200:
+                    print('superjob ok')
+                    response = await response.json()
+                else:
+                    print("ERROR API HH")
+                    return
         data = []
         for item in response['objects']:
             data.append(self.get_vacancy_db_field_dict(item, city_db_object_dict, profession_db_object_dict, platform))
         Vacancy.add(data)
         return data
 
-    def get_resumes(
+    async def get_resumes(
             self,
             city=None,
             gender=None,
@@ -121,6 +129,7 @@ class SuperjobParser:
             age_to=None,
             page=0,
     ):
+        print('start superjob resumes')
         params = {
             'keyword': text,
             'town': city,
@@ -147,11 +156,16 @@ class SuperjobParser:
         platform = Platform.get_or_create(name='Superjob')[0]
         city_db_object_dict = {}
         profession_db_object_dict = {}
-        response = requests.get(
-            url=self.api_url + '/resumes',
-            headers=self.headers,
-            params=params,
-        ).json()
+        async with aiohttp.ClientSession() as session:
+            url = self.api_url + '/resumes'
+            async with session.get(url, headers=self.headers, params=filter_params(**params)) as response:
+                if response.status == 200:
+                    response = await response.json()
+                    print('superjob ok')
+                else:
+                    print("ERROR API Superjob")
+                    return
+
         data = []
         for item in response.get('objects'):
             data.append(self.get_resume_db_field_dict(item, city_db_object_dict, profession_db_object_dict, platform))

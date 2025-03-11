@@ -4,6 +4,7 @@ from datetime import timezone
 from fastapi import FastAPI, Depends
 from starlette.middleware.cors import CORSMiddleware
 from whatsapp_api_client_python import API
+import asyncio
 
 from api_hh import HHParser
 from api_superjob import SuperjobParser
@@ -42,6 +43,10 @@ def ensure_aware(dt):
     return dt
 
 
+def filter_params(**kwargs):
+    return {k: v for k, v in kwargs.items() if v is not None}
+
+
 @app.get("/resumes")
 async def get_resumes(
         current_user: Annotated[User, Depends(get_current_active_user)],
@@ -55,7 +60,7 @@ async def get_resumes(
         age_to: Optional[int] = None,
         page: Optional[int] = None,
 ):
-    hh_data = hh_parser.get_resumes(
+    params = filter_params(
         city=city,
         gender=gender,
         create_tm=create_tm,
@@ -66,17 +71,11 @@ async def get_resumes(
         age_to=age_to,
         page=page,
     )
-    sj_data = sj_parser.get_resumes(
-        city=city,
-        gender=gender,
-        create_tm=create_tm,
-        experience_from=experience_from,
-        text=position,
-        education=education,
-        age_from=age_from,
-        age_to=age_to,
-        page=page,
-    )
+
+    hh_task = asyncio.create_task(hh_parser.get_resumes(**params))
+    sj_task = asyncio.create_task(sj_parser.get_resumes(**params))
+
+    hh_data, sj_data = await asyncio.gather(hh_task, sj_task)
     res = hh_data + sj_data
     return res
 
@@ -91,7 +90,8 @@ async def get_vacancies(
         text: Optional[str] = None,
         page: Optional[int] = 0,
 ):
-    hh_data = hh_parser.get_vacancies(
+    print('get vac')
+    params = filter_params(
         city=city,
         create_tm=create_tm,
         experience_from=experience_from,
@@ -99,14 +99,10 @@ async def get_vacancies(
         text=text,
         page=page,
     )
-    sj_data = sj_parser.get_vacancies(
-        city=city,
-        create_tm=create_tm,
-        experience_from=experience_from,
-        salary=salary,
-        text=text,
-        page=page,
-    )
+    hh_task = asyncio.create_task(hh_parser.get_vacancies(**params))
+    sj_task = asyncio.create_task(sj_parser.get_vacancies(**params))
+    hh_data, sj_data = await asyncio.gather(hh_task, sj_task)
+
     res = hh_data + sj_data
     return res
 
@@ -139,11 +135,6 @@ async def get_stat(
         current_user: Annotated[User, Depends(get_current_active_user)],
         subscriber_phone: str = '',
 ):
-    # print(subscriber_phone)
-    # user = UserDB.get_by_username(current_user.username)
-    # chat = WhatsappMessage.get_chat(user.id, subscriber_phone)
-    # pprint.pprint(chat)
-    # return chat
     user_db = UserDB.get_by_username(current_user.username)
     whatsapp_instance = WhatsappInstance.get_by_user_id(user_id=user_db.id)
     if not whatsapp_instance:
